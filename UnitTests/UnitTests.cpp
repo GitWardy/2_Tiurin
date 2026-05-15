@@ -5,8 +5,82 @@
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
+
+namespace Microsoft
+{
+    namespace VisualStudio
+    {
+        namespace CppUnitTestFramework
+        {
+            // Специализация для вывода ErrorCode в сообщениях об ошибках
+            template<>
+            inline wstring ToString<ErrorCode>(const ErrorCode& e)
+            {
+                switch (e)
+                {
+                case FILE_NOT_OPENING: return L"FILE_NOT_OPENING";
+                case MORE_THAN_ONE_STRING: return L"MORE_THAN_ONE_STRING";
+                case STRING_TOO_LONG: return L"STRING_TOO_LONG";
+                case WRONG_SYMBOL: return L"WRONG_SYMBOL";
+                case NOT_ENOUGH_OPERANDS: return L"NOT_ENOUGH_OPERANDS";
+                case NOT_ENOUGH_OPERATORS: return L"NOT_ENOUGH_OPERATORS";
+                case EMPTY_TREE: return L"EMPTY_TREE";
+                default: return L"UNKNOWN";
+                }
+            }
+        }
+    }
+}
+
 namespace UnitTests
 {
+    // Вспомогателные функции для createLogicalTree
+    ExprNode* makeVar(char name)
+    {
+        return new ExprNode(VAR, name);
+    }
+
+    ExprNode* makeNot(ExprNode* child)
+    {
+        return new ExprNode(NOT, child, nullptr);
+    }
+
+
+    ExprNode* makeAnd(ExprNode* left, ExprNode* right)
+    {
+        return new ExprNode(AND, left, right);
+    }
+
+    ExprNode* makeOr(ExprNode* left, ExprNode* right)
+    {
+        return new ExprNode(OR, left, right);
+    }
+
+
+    bool compareTrees(ExprNode* a, ExprNode* b)
+    {
+        if (!a && !b) return true;
+        if (!a || !b) return false;
+        if (a->type != b->type) return false;
+        if (a->type == VAR && a->name != b->name) return false;
+        return compareTrees(a->left, b->left) && compareTrees(a->right, b->right);
+    }
+
+    void assertErrorsEqual(const vector<ErrorInfo>& actual, const vector<ErrorInfo>& expected)
+    {
+        Assert::AreEqual((int)expected.size(), (int)actual.size());
+        for (size_t i = 0; i < expected.size(); ++i)
+        {
+            Assert::AreEqual(expected[i].type, actual[i].type);
+            Assert::AreEqual(expected[i].position, actual[i].position);
+            Assert::AreEqual(expected[i].badChar, actual[i].badChar);
+            Assert::AreEqual(expected[i].filePath, actual[i].filePath);
+        }
+    }
+
+
+
+
     TEST_CLASS(TokenizeTests)
     {
     private:
@@ -179,6 +253,236 @@ namespace UnitTests
                 {"A",1},{"B",5},{"C",7},{"D",9},{"E",11},{"F",14}
             };
             AssertTokensEqual(result, expected);
+        }
+    };
+
+
+
+    TEST_CLASS(CreateLogicalTreeTests)
+    {
+    public:
+        // 1. Пуcтая стрoка -> EMPTY_TREE
+        TEST_METHOD(CreateTree_EmptyString)
+        {
+            vector<ErrorInfo> errors;
+            ExprNode* result = createLogicalTree("", errors);
+            Assert::IsNull(result);
+            vector<ErrorInfo> expected = { {EMPTY_TREE, -1, 0, ""} };
+            assertErrorsEqual(errors, expected);
+        }
+
+
+        // 2. Одна переменая "A" -> VAR('A')
+        TEST_METHOD(CreateTree_SingleVariable)
+        {
+            vector<ErrorInfo> errors;
+            ExprNode* result = createLogicalTree("A", errors);
+            ExprNode* expected = makeVar('A');
+            Assert::IsTrue(compareTrees(result, expected));
+            assertErrorsEqual(errors, {});
+            delete expected;
+            delete result;
+        }
+
+        // 3. Один унaрный оператoр "A !" -> NOT(A)
+        TEST_METHOD(CreateTree_UnaryNot)
+        {
+            vector<ErrorInfo> errors;
+            ExprNode* result = createLogicalTree("A !", errors);
+            ExprNode* expected = makeNot(makeVar('A'));
+            Assert::IsTrue(compareTrees(result, expected));
+            assertErrorsEqual(errors, {});
+            delete expected;
+            delete result;
+        }
+
+        // 4. Бинaрная оперaция AND "A B *" -> AND(A,B)
+        TEST_METHOD(CreateTree_BinaryAnd)
+        {
+            vector<ErrorInfo> errors;
+            ExprNode* result = createLogicalTree("A B *", errors);
+            ExprNode* expected = makeAnd(makeVar('A'), makeVar('B'));
+            Assert::IsTrue(compareTrees(result, expected));
+            assertErrorsEqual(errors, {});
+            delete expected;
+            delete result;
+        }
+
+        // 5. Бинарная oперация OR "A B +" -> OR(A,B)
+        TEST_METHOD(CreateTree_BinaryOr)
+        {
+            vector<ErrorInfo> errors;
+            ExprNode* result = createLogicalTree("A B +", errors);
+            ExprNode* expected = makeOr(makeVar('A'), makeVar('B'));
+            Assert::IsTrue(compareTrees(result, expected));
+            assertErrorsEqual(errors, {});
+            delete expected;
+            delete result;
+        }
+
+        // 6. Тoлько оперaнды "A B C" -> NOT_ENOUGH_OPERATORS
+        TEST_METHOD(CreateTree_OnlyOperands)
+        {
+            vector<ErrorInfo> errors;
+            ExprNode* result = createLogicalTree("A B C", errors);
+            Assert::IsNull(result);
+            vector<ErrorInfo> expected = { {NOT_ENOUGH_OPERATORS, -1, 0, ""} };
+            assertErrorsEqual(errors, expected);
+        }
+
+        // 7. Только операторы "! * +" -> три ошибки NOT_ENOUGH_OPERANDS
+        TEST_METHOD(CreateTree_OnlyOperators)
+        {
+            vector<ErrorInfo> errors;
+            ExprNode* result = createLogicalTree("! * +", errors);
+            Assert::IsNull(result);
+            vector<ErrorInfo> expected = {
+                {NOT_ENOUGH_OPERANDS, 1, 0, ""},
+                {NOT_ENOUGH_OPERANDS, 3, 0, ""},
+                {NOT_ENOUGH_OPERANDS, 5, 0, ""}
+            };
+
+            assertErrorsEqual(errors, expected);
+        }
+
+
+        // 8. Не хватает операнда для '+' (A +) -> NOT_ENOUGH_OPERANDS на позиций '+'
+        TEST_METHOD(CreateTree_MissingOperandForPlus)
+        {
+            vector<ErrorInfo> errors;
+            ExprNode* result = createLogicalTree("A +", errors);
+            Assert::IsNull(result);
+            vector<ErrorInfo> expected = { {NOT_ENOUGH_OPERANDS, 3, 0, ""} };
+            assertErrorsEqual(errors, expected);
+        }
+
+        // 9. Не хватает операнда для '!' -> NOT_ENOUGH_OPERANDS
+        TEST_METHOD(CreateTree_MissingOperandForNot)
+        {
+            vector<ErrorInfo> errors;
+            ExprNode* result = createLogicalTree("!", errors);
+            Assert::IsNull(result);
+            vector<ErrorInfo> expected = { {NOT_ENOUGH_OPERANDS, 1, 0, ""} };
+            assertErrorsEqual(errors, expected);
+        }
+
+        // 10. Недопустимый симвoл "A B ^" -> WRONG_SYMBOL на позиции 5, символ '^'
+        TEST_METHOD(CreateTree_InvalidSymbol)
+        {
+            vector<ErrorInfo> errors;
+            ExprNode* result = createLogicalTree("A B ^", errors);
+            Assert::IsNull(result);
+            vector<ErrorInfo> expected = { {WRONG_SYMBOL, 5, '^', ""} };
+            assertErrorsEqual(errors, expected);
+        }
+
+        // 11. Несколько ошибок "A + ^ B *" -> две ошибки (после '^' стек содержит фиктивные узлы, '*' не даёт ошибку)
+        TEST_METHOD(CreateTree_MultipleErrors)
+        {
+            vector<ErrorInfo> errors;
+            ExprNode* result = createLogicalTree("A + ^ B *", errors);
+            Assert::IsNull(result);
+            // Ожидаeм: NOT_ENOUGH_OPERANDS для '+' (пoзиций 3) и WRONG_SYMBOL для '^' (поз.5)
+            // Ошибкa для '*' не добавляется из-за фиктивных узлов в стеке
+            vector<ErrorInfo> expected = {
+                {NOT_ENOUGH_OPERANDS, 3, 0, ""},
+                {WRONG_SYMBOL, 5, '^', ""}
+            };
+
+            assertErrorsEqual(errors, expected);
+        }
+
+        // 12. Сложное выражение "A B * C + !" -> NOT(OR(AND(A,B),C))
+        TEST_METHOD(CreateTree_ComplexExpression)
+        {
+            vector<ErrorInfo> errors;
+            ExprNode* result = createLogicalTree("A B * C + !", errors);
+            ExprNode* expected = makeNot(
+                makeOr(
+                    makeAnd(makeVar('A'), makeVar('B')),
+                    makeVar('C')
+                )
+            );
+
+            Assert::IsTrue(compareTrees(result, expected));
+            assertErrorsEqual(errors, {});
+
+            delete expected;
+            delete result;
+        }
+
+        // 13. Сложное выражение с разделительными символами пробелов и табуляций 
+        // "A   B   *  C    +    !" -> NOT(OR(AND(A,B),C))
+        TEST_METHOD(CreateTree_ComplexExpressionWithSeparators)
+        {
+            vector<ErrorInfo> errors;
+            ExprNode* result = createLogicalTree("A   B   *  C    +    !", errors);
+            ExprNode* expected = makeNot(
+                makeOr(
+                    makeAnd(makeVar('A'), makeVar('B')),
+                    makeVar('C')
+                )
+            );
+            Assert::IsTrue(compareTrees(result, expected));
+            assertErrorsEqual(errors, {});
+            delete expected;
+            delete result;
+        }
+
+        // 14. Комплексный тест: глубокое вложение "A B C * + D E * F + ! *"
+        TEST_METHOD(CreateTree_ComplexDeepNested)
+        {
+            vector<ErrorInfo> errors;
+            ExprNode* result = createLogicalTree("A B C * + D E * F + ! *", errors);
+            ExprNode* expected = makeAnd(
+                makeOr(
+                    makeVar('A'),
+                    makeAnd(makeVar('B'), makeVar('C'))
+                ),
+                makeNot(
+                    makeOr(
+                        makeAnd(makeVar('D'), makeVar('E')),
+                        makeVar('F')
+                    )
+                )
+            );
+
+            Assert::IsTrue(compareTrees(result, expected));
+            assertErrorsEqual(errors, {});
+            delete expected;
+            delete result;
+        }
+
+        // 15. Много операций (бинарная вложенность) "A B C D E * * * *"
+        TEST_METHOD(CreateTree_ManyOperations)
+        {
+            vector<ErrorInfo> errors;
+            ExprNode* result = createLogicalTree("A B C D E * * * *", errors);
+            ExprNode* expected = makeAnd(
+                makeVar('A'),
+                makeAnd(
+                    makeVar('B'),
+                    makeAnd(
+                        makeVar('C'),
+                        makeAnd(makeVar('D'), makeVar('E'))
+                    )
+                )
+            );
+
+            Assert::IsTrue(compareTrees(result, expected));
+            assertErrorsEqual(errors, {});
+            delete expected;
+            delete result;
+        }
+
+        // 16. Комплексный тест с ошибкой в середине "A B + C @ D * !" -> WRONG_SYMBOL на позиции 9 (символ '@')
+        TEST_METHOD(CreateTree_ComplexWithErrorInMiddle)
+        {
+            vector<ErrorInfo> errors;
+            ExprNode* result = createLogicalTree("A B + C @ D * !", errors);
+            Assert::IsNull(result);
+            vector<ErrorInfo> expected = { {WRONG_SYMBOL, 9, '@', ""} };
+            assertErrorsEqual(errors, expected);
         }
     };
 }
