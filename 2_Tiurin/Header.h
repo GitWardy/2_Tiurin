@@ -46,7 +46,7 @@ enum ErrorCode
 struct ErrorInfo
 {
     ErrorCode type;
-    int position;        // 1?based или -1
+    int position;        
     char badChar;
     string filePath;
 
@@ -82,7 +82,7 @@ struct ErrorInfo
 struct Token
 {
     string value;
-    int position;   // 1?based
+    int position;  
 };
 
 /**
