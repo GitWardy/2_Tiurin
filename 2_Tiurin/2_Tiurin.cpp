@@ -1,20 +1,70 @@
-﻿// 2_Tiurin.cpp : Этот файл содержит функцию "main". Здесь начинается и заканчивается выполнение программы.
-//
+﻿#include "Header.h"
 
-#include <iostream>
+// Инициализация статического счётчика
+int ExprNode::nextID = 0;
 
-int main()
+// Конструкторы и деструктор (простые заглушки)
+ExprNode::ExprNode(NodeType t, char n)
+    : type(t), name(n), left(nullptr), right(nullptr)
 {
-    std::cout << "Hello World!\n";
+    ID = nextID++;
 }
 
-// Запуск программы: CTRL+F5 или меню "Отладка" > "Запуск без отладки"
-// Отладка программы: F5 или меню "Отладка" > "Запустить отладку"
+ExprNode::ExprNode(NodeType t, ExprNode* l, ExprNode* r)
+    : type(t), name(0), left(l), right(r)
+{
+    ID = nextID++;
+}
 
-// Советы по началу работы 
-//   1. В окне обозревателя решений можно добавлять файлы и управлять ими.
-//   2. В окне Team Explorer можно подключиться к системе управления версиями.
-//   3. В окне "Выходные данные" можно просматривать выходные данные сборки и другие сообщения.
-//   4. В окне "Список ошибок" можно просматривать ошибки.
-//   5. Последовательно выберите пункты меню "Проект" > "Добавить новый элемент", чтобы создать файлы кода, или "Проект" > "Добавить существующий элемент", чтобы добавить в проект существующие файлы кода.
-//   6. Чтобы снова открыть этот проект позже, выберите пункты меню "Файл" > "Открыть" > "Проект" и выберите SLN-файл.
+ExprNode::~ExprNode()
+{
+    // заглушка
+}
+
+ExprNode& ExprNode::operator=(const ExprNode& other)
+{
+    // заглушка
+    return *this;
+}
+
+vector<Token> tokenize(const string& expr)
+{
+    vector<Token> result;   // заглушка: возвращаем пустой вектор
+    return result;
+}
+
+ExprNode* createLogicalTree(const string& expr, vector<ErrorInfo>& errors)
+{
+    return nullptr;          // заглушка
+}
+
+void deMorganTransform(ExprNode* node)
+{
+    // заглушка
+}
+
+void removeDoubleNegation(ExprNode* node)
+{
+    // заглушка
+}
+
+void simplifyTree(ExprNode* node)
+{
+    // заглушка
+}
+
+void saveExprNodeToDot(ExprNode* node, ostream& out)
+{
+    // заглушка
+}
+
+void saveDotToFile(ExprNode* root, const string& path, vector<ErrorInfo>& errors)
+{
+    // заглушка
+}
+
+int main(int argc, char* argv[])
+{
+    // заглушка – просто возвращаем 0
+    return 0;
+}
