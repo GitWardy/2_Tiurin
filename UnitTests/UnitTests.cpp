@@ -485,4 +485,77 @@ namespace UnitTests
             assertErrorsEqual(errors, expected);
         }
     };
+
+
+
+    TEST_CLASS(DeMorganTransformTests)
+    {
+    private:
+        // Вспомогатeльная функция: примeнить deMorganTransform к кoрню и срaвнить с ожидаeмым древoм
+        void testDeMorgan(const string& inputExpr, const string& expectedExpr)
+        {
+            vector<ErrorInfo> errors;
+            ExprNode* actual = createLogicalTree(inputExpr, errors);
+            Assert::IsNotNull(actual);
+            Assert::AreEqual(0, (int)errors.size());
+
+            deMorganTransform(actual);   // применяем к кoрню
+
+            ExprNode* expected = createLogicalTree(expectedExpr, errors);
+            Assert::IsNotNull(expected);
+            Assert::AreEqual(0, (int)errors.size());
+
+            Assert::IsTrue(compareTrees(actual, expected));
+
+            delete actual;
+            delete expected;
+        }
+
+    public:
+        // 1. Де Морган: !(A * B) -> A ! B ! +
+        TEST_METHOD(DeMorgan_And)
+        {
+            testDeMorgan("A B * !", "A ! B ! +");
+        }
+
+        // 2. Де Морган: !(A + B) -> A ! B ! *
+        TEST_METHOD(DeMorgan_Or)
+        {
+            testDeMorgan("A B + !", "A ! B ! *");
+        }
+
+        // 3. !A (не применимо) -> без изменений.
+        TEST_METHOD(DeMorgan_NotApplicable_NotVar)
+        {
+            testDeMorgan("A !", "A !");
+        }
+
+        // 4. !!A (не применимо) ->  без изменений
+        TEST_METHOD(DeMorgan_NotApplicable_DoubleNot)
+        {
+            testDeMorgan("A ! !", "A ! !");
+        }
+
+        // 5. !((A*B)*C) -> A B * ! C ! +  (только верхний NOT преобразуется)
+        // Вход: A B * C * ! -> ожидаем: A B * ! C ! +
+        TEST_METHOD(DeMorgan_NestedAnd)
+        {
+            testDeMorgan("A B * C * !", "A B * ! C ! +");
+        }
+
+        // 6. Комплексный тест 1: глубокое вложение AND и OR под NOT (только верхний преобразуется)
+        // Вход: !( (A*B) + C ) -> ожидаем: A B * ! C ! *
+        TEST_METHOD(DeMorgan_ComplexNested_First)
+        {
+            testDeMorgan("A B * C + !", "A B * ! C ! *");
+        }
+
+        // 7. Комплексный тест 2: вложенный Де Морган (только верхний преобразуется)
+        // Вход: !( (A+B) * C )  ->  ожидаем: A B + ! C ! +
+        TEST_METHOD(DeMorgan_ComplexNested_Second)
+        {
+            testDeMorgan("A B + ! C * !", "A B + ! ! C ! +");
+        }
+    };
+
 }
