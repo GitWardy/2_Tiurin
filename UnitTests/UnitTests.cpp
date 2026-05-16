@@ -623,4 +623,97 @@ namespace UnitTests
             testRemoveDouble("A ! ! B ! ! + ! !", "A ! ! B ! ! +");
         }
     };
+
+
+
+    TEST_CLASS(SimplifyTreeTests)
+    {
+    private:
+        //Вспомoгательная функция: упрoстить строку и срaвнить с ожидaeмой стрoкой
+        void testSimplify(const string& inputExpr, const string& expectedExpr)
+        {
+            vector<ErrorInfo> errors;
+            ExprNode* tree = createLogicalTree(inputExpr, errors);
+            Assert::IsNotNull(tree);
+            Assert::AreEqual(0, (int)errors.size());
+
+            simplifyTree(tree);
+
+            ExprNode* expected = createLogicalTree(expectedExpr, errors);
+            Assert::IsNotNull(expected);
+            Assert::AreEqual(0, (int)errors.size());
+
+            Assert::IsTrue(compareTrees(tree, expected));
+
+            delete tree;
+            delete expected;
+        }
+
+    public:
+        // 1. Удаление двойного отрицания:  !!A -> A
+        TEST_METHOD(SimplifyTree_DoubleNegation)
+        {
+            testSimplify("A ! !", "A");
+        }
+
+        // 2. Де Морган: !(A * B) ->  A ! B ! +
+        TEST_METHOD(SimplifyTree_DeMorganAnd)
+        {
+            testSimplify("A B * !", "A ! B ! +");
+        }
+
+        // 3. Де Морган: !(A + B)  -> A ! B ! *
+        TEST_METHOD(SimplifyTree_DeMorganOr)
+        {
+            testSimplify("A B + !", "A ! B ! *");
+        }
+
+        // 4. Вложенный де Морган: !((A*B)+C) -> (!A+!B)*!C
+        TEST_METHOD(SimplifyTree_NestedDeMorgan)
+        {
+            // вход: A B * C + !  (т.е. !((A&&B)||C))
+            // ожидаемое: A ! B ! + C ! *  (т.е. (!A||!B) && !C)
+            testSimplify("A B * C + !", "A ! B ! + C ! *");
+        }
+
+        // 5. Двойное отрицание + де Морган: !!(A*B) -> A*B (двойнoе убирает, де Мoрган не трогает)
+        TEST_METHOD(SimplifyTree_DoubleNegAndDeMorgan)
+        {
+            testSimplify("A B * ! !", "A B *");
+        }
+
+        // 6.  Комбинация: !(!A * B) -> A + !B
+        TEST_METHOD(SimplifyTree_Combination)
+        {
+            testSimplify("A ! B * !", "A B ! +");
+        }
+
+        // 7. Дерево без изменений: A B *  ->  A B * 
+        TEST_METHOD(SimplifyTree_NoChange)
+        {
+            testSimplify("A B *", "A B *");
+        }
+
+        // 8. Комплексный тест: !!(!(A*B) * !(C+D)) -> (!A+!B) * (!C*!D)
+        TEST_METHOD(SimplifyTree_ComplexLarge)
+        {
+            // Вход: A B * ! C D + ! * ! !
+            // Ожидание: A ! B ! + C ! D ! * *
+            testSimplify("A B * ! C D + ! * ! !", "A ! B ! + C ! D ! * *");
+        }
+
+        // 9. Усложнённый тест: (!!(A+B) * !!!(C*D) * !!E) -> (A+B) * (!C+!D) * E
+        TEST_METHOD(SimplifyTree_ComplexDeMorganNested)
+        {
+            // Вход: A B + ! ! C D * ! ! ! E ! ! * * *
+            // Ожидание: A B + C ! D ! + E * * *
+            testSimplify("A B + ! ! C D * ! ! ! * E ! ! *", "A B + C ! D ! + * E *");
+        }
+
+        // 10. Комплексный тест: !( (A+B) * (C+D) * (E+F) ) -> (!A*!B) + (!C*!D) + (!E*!F)
+        TEST_METHOD(SimplifyTree_ComplexTest11)
+        {
+            testSimplify("A B + C D + * E F + * !", "A ! B ! * C ! D ! * + E ! F ! * +");
+        }
+    };
 }
