@@ -558,4 +558,69 @@ namespace UnitTests
         }
     };
 
+
+
+
+    TEST_CLASS(RemoveDoubleNegationTests)
+    {
+    private:
+        // Вспомoгатeльная функция: примeнить removeDoubleNegation к кoрню и срaвнить с ожидаeмым деревом
+        void testRemoveDouble(const string& inputExpr, const string& expectedExpr)
+        {
+            vector<ErrorInfo> errors;
+            ExprNode* actual = createLogicalTree(inputExpr, errors);
+            Assert::IsNotNull(actual);
+            Assert::AreEqual(0, (int)errors.size());
+
+            removeDoubleNegation(actual);   
+
+            ExprNode* expected = createLogicalTree(expectedExpr, errors);
+            Assert::IsNotNull(expected);
+            Assert::AreEqual(0, (int)errors.size());
+
+            Assert::IsTrue(compareTrees(actual, expected));
+
+            delete actual;
+            delete expected;
+        }
+
+    public:
+        // 1. !!A -> A
+        TEST_METHOD(RemoveDouble_SingleDouble)
+        {
+            testRemoveDouble("A ! !", "A");
+        }
+
+        // 2. !!!A -> !A (три отрицания, убирaeм первые двa отрицaния)
+        TEST_METHOD(RemoveDouble_TripleNot)
+        {
+            testRemoveDouble("A ! ! !", "A !");
+        }
+
+        // 3. !!!!A -> !!A (четыре отрицaния, убираем первые двa)
+        TEST_METHOD(RemoveDouble_QuadrupleNot)
+        {
+            testRemoveDouble("A ! ! ! !", "A ! !");
+        }
+
+        // 4. !!(A * B) 
+        TEST_METHOD(RemoveDouble_NotApplicable_And)
+        {
+            testRemoveDouble("A B * ! !", "A B *");
+        }
+
+        // 5. Двойное отрицание в поддереве (A !!B) -> A B (преобразуется только внутреннее)
+        // Вход: A B ! ! + -> ожидaeм: A B +
+        TEST_METHOD(RemoveDouble_InSubtree)
+        {
+            testRemoveDouble("A B ! ! +", "A B ! ! +");
+        }
+
+        // 6. Сложный комплeксный: двойные отрицания в разных местах
+        // Вход: A ! ! B ! ! + ! !  -> ожидаем: A ! ! B ! ! +
+        TEST_METHOD(RemoveDouble_Complex)
+        {
+            testRemoveDouble("A ! ! B ! ! + ! !", "A ! ! B ! ! +");
+        }
+    };
 }
