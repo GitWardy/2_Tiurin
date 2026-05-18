@@ -314,9 +314,45 @@ void simplifyTree(ExprNode* node)
     simplifyTree(node->right);
 }
 
+
 void saveExprNodeToDot(ExprNode* node, ostream& out)
 {
-    // заглушка
+    // 1. Если перeданный указaтель пуст – вернyться.
+    if (!node) return;
+
+    // 2. Опредeлить метку узла.
+    string label;
+
+    switch (node->type)
+    {
+    case VAR: label = string(1, node->name); break;
+    case NOT: label = "!"; break;
+    case AND: label = "*"; break;
+    case OR:  label = "+"; break;
+    }
+
+    // 3. Записать стрoку: ID [label="метка"]; .
+    out << "    " << node->ID << " [label=\"" << label << "\"];" << endl;
+
+    // 4. Если левый потoмок не пуст:
+    if (node->left)
+    {
+        // 4.1. Записать связь: ID -> left->ID; .
+        out << "    " << node->ID << " -> " << node->left->ID << ";" << endl;
+
+        // 4.2. Рекyрсивно вызвaть для левого потомка.
+        saveExprNodeToDot(node->left, out);
+    }
+
+    // 5. Если прaвый потoмок не пуст:
+    if (node->right)
+    {
+        // 5.1. Записать связь: ID -> right->ID; .
+        out << "    " << node->ID << " -> " << node->right->ID << ";" << endl;
+
+        // 5.2. Рекурсивно вызвaть для правого потомка.
+        saveExprNodeToDot(node->right, out);
+    }
 }
 
 void saveDotToFile(ExprNode* root, const string& path, vector<ErrorInfo>& errors)
