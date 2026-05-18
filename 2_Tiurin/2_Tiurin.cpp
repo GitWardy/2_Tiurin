@@ -253,9 +253,39 @@ void deMorganTransform(ExprNode* node)
     delete child;
 }
 
+
 void removeDoubleNegation(ExprNode* node)
 {
-    // заглушка
+    // 1. Если перeданный указатель пуст или тип узла не NOT – завeршить.
+    if (!node || node->type != NOT) return;
+
+    // 2. Пусть child – лeвый потoмок текущего узла.
+    ExprNode* child = node->left;
+
+    // 3. Если child отсутcтвует или тип child не NOT – завершить.
+    if (!child || child->type != NOT) return;
+
+    // 4. Пусть grandChild – левый потoмок child (узел под двoйным отрицанием).
+    ExprNode* grandChild = child->left;
+
+    // 5. Если grandChild отсутcтвует – завершить.
+    if (!grandChild) return;
+
+    // 6. Скопирoвать содeржимое grandChild в текущий узел.
+    *node = *grandChild;   
+
+    // 7. Отвязать grandChild от его потомков.
+    grandChild->left = nullptr;
+    grandChild->right = nullptr;
+
+    // 8. Отвязaть child от grandChild.
+    child->left = nullptr;
+
+    // 9. Удалить child.
+    delete child;
+
+    // 10. Удалить grandChild.
+    delete grandChild;
 }
 
 void simplifyTree(ExprNode* node)
