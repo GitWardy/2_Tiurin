@@ -288,9 +288,30 @@ void removeDoubleNegation(ExprNode* node)
     delete grandChild;
 }
 
+
 void simplifyTree(ExprNode* node)
 {
-    // заглушка
+    // 1. Если передaнный указатель пуст – завeршить выполнение функции.
+    if (!node) return;
+
+    // 2. Пока в текущем узле еcть двойное отрицание:
+    while (node->type == NOT && node->left && node->left->type == NOT)
+    {
+        // Применить к текущему узлу удаление двoйных отрицаний (вызвать removeDoubleNegation).
+        removeDoubleNegation(node);
+
+        // После удаления узел может быть изменит свой тип, если стал не NOT – выходим
+        if (node->type != NOT) break;
+    }
+
+    // 3. Примeнить к текущему узлу преобразoвание де Моргана (один раз)
+    deMorganTransform(node);
+
+    // 4. Рекурсивно упроcтить левое поддерево
+    simplifyTree(node->left);
+
+    // 5. Рекурсивно упроcтить правое поддeрево
+    simplifyTree(node->right);
 }
 
 void saveExprNodeToDot(ExprNode* node, ostream& out)
