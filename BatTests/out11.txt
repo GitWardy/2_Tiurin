@@ -1,0 +1,19 @@
+digraph output {
+    8 [label="*"];
+    8 -> 0;
+    0 [label="A"];
+    8 -> 7;
+    7 [label="*"];
+    7 -> 1;
+    1 [label="B"];
+    7 -> 6;
+    6 [label="*"];
+    6 -> 2;
+    2 [label="C"];
+    6 -> 5;
+    5 [label="*"];
+    5 -> 3;
+    3 [label="D"];
+    5 -> 4;
+    4 [label="E"];
+}

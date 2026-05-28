@@ -1,0 +1,7 @@
+digraph output {
+    6 [label="*"];
+    6 -> 2;
+    2 [label="A"];
+    6 -> 5;
+    5 [label="B"];
+}

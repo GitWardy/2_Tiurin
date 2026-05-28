@@ -184,7 +184,7 @@ ExprNode* createLogicalTree(const string& expr, vector<ErrorInfo>& errors)
     }
 
     // 4.2. Если стeк пуст – добавить ошибку EMPTY_TREE и вернуть nullptr.
-    if (st.empty())
+    if (st.empty())  
     {
         errors.push_back({ EMPTY_TREE, -1, 0, "" });
         return nullptr;
@@ -192,7 +192,7 @@ ExprNode* createLogicalTree(const string& expr, vector<ErrorInfo>& errors)
 
     // 4.3. Если в стеке больше одного элемента – добавить ошибку NOT_ENOUGH_OPERATORS,
     //      удалить узлы и вернуть nullptr.
-    if (st.size() > 1)
+    if (st.size() > 1)   
     {
         errors.push_back({ NOT_ENOUGH_OPERATORS, -1, 0, "" });
         while (!st.empty())

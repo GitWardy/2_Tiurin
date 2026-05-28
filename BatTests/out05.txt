@@ -1,0 +1,11 @@
+digraph output {
+    3 [label="+"];
+    3 -> 4;
+    4 [label="!"];
+    4 -> 0;
+    0 [label="A"];
+    3 -> 5;
+    5 [label="!"];
+    5 -> 1;
+    1 [label="B"];
+}

@@ -1,0 +1,3 @@
+digraph output {
+    2 [label="A"];
+}
